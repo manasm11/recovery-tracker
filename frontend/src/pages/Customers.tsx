@@ -70,12 +70,20 @@ export function Customers() {
           <h1 className="text-2xl font-semibold text-slate-900">Customers</h1>
           <p className="mt-1 text-sm text-slate-500">All customers under recovery.</p>
         </div>
-        <button
-          onClick={() => setShowForm((v) => !v)}
-          className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
-        >
-          {showForm ? 'Close' : '+ Add customer'}
-        </button>
+        <div className="flex gap-2">
+          <Link
+            to="/import"
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Import from Ledger
+          </Link>
+          <button
+            onClick={() => setShowForm((v) => !v)}
+            className="rounded-md bg-slate-900 px-4 py-2 text-sm font-medium text-white hover:bg-slate-800"
+          >
+            {showForm ? 'Close' : '+ Add customer'}
+          </button>
+        </div>
       </div>
 
       {showForm && (
@@ -169,7 +177,7 @@ export function Customers() {
                       {c.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{c.phone}</td>
+                  <td className="px-4 py-3 text-sm text-slate-600">{c.phone || '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {formatDate(c.last_reminder_date)}
                   </td>

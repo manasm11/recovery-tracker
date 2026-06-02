@@ -39,7 +39,7 @@ class ReminderOut(ReminderBase):
 # ---- Customers ----
 class CustomerBase(BaseModel):
     name: str = Field(min_length=1, max_length=200)
-    phone: str = Field(min_length=1, max_length=40)
+    phone: str = Field(default="", max_length=40)
 
 
 class CustomerCreate(CustomerBase):
@@ -80,3 +80,23 @@ class DashboardStats(BaseModel):
     overdue: int
     never_contacted: int
     no_followup: int
+
+
+# ---- Import ----
+class ImportRequest(BaseModel):
+    text: str = Field(min_length=1)
+
+
+class ImportedCustomerInfo(BaseModel):
+    name: str
+    amount: float
+
+
+class ImportResult(BaseModel):
+    imported: int
+    duplicates: int
+    credit_skipped: int
+    total_parsed: int
+    names_imported: list[ImportedCustomerInfo]
+    names_skipped_credit: list[ImportedCustomerInfo]
+    names_skipped_duplicate: list[ImportedCustomerInfo]

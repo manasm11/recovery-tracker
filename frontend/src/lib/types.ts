@@ -25,7 +25,7 @@ export interface Reminder {
 export interface Customer {
   id: number
   name: string
-  phone: string
+  phone: string | null
   created_at: string
 }
 
