@@ -6,6 +6,7 @@ import { Today } from './pages/Today'
 import { Customers } from './pages/Customers'
 import { CustomerDetail } from './pages/CustomerDetail'
 import { Dashboard } from './pages/Dashboard'
+import { ImportCustomers } from './pages/ImportCustomers'
 import type { JSX } from 'react'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -42,6 +43,7 @@ export default function App() {
         <Route path="/" element={<Today />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/customers/:id" element={<CustomerDetail />} />
+        <Route path="/import" element={<ImportCustomers />} />
         <Route
           path="/dashboard"
           element={
