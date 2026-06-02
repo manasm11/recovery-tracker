@@ -5,12 +5,16 @@ from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
+from app.ledger_parser import parse_ledger
 from app.models import Customer, User
 from app.schemas import (
     CustomerCreate,
     CustomerStatus,
     CustomerUpdate,
     CustomerWithReminders,
+    ImportedCustomerInfo,
+    ImportRequest,
+    ImportResult,
 )
 from app.services import compute_status
 
@@ -89,3 +93,44 @@ def delete_customer(
         raise HTTPException(status_code=404, detail="Customer not found")
     db.delete(customer)
     db.commit()
+
+
+@router.post("/import", response_model=ImportResult)
+def import_customers(
+    payload: ImportRequest,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> ImportResult:
+    summary = parse_ledger(payload.text)
+
+    # Build a set of existing names (upper-cased) for duplicate detection.
+    existing_names: set[str] = {
+        row.name.strip().upper() for row in db.query(Customer.name).all()
+    }
+
+    imported: list[ImportedCustomerInfo] = []
+    skipped_dup: list[ImportedCustomerInfo] = []
+
+    for entry in summary.debit_entries:
+        norm = entry.name.strip().upper()
+        if norm in existing_names:
+            skipped_dup.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+            continue
+        db.add(Customer(name=entry.name.strip(), phone="", created_by=user.id))
+        existing_names.add(norm)
+        imported.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+
+    db.commit()
+
+    return ImportResult(
+        imported=len(imported),
+        duplicates=len(skipped_dup),
+        credit_skipped=len(summary.credit_entries),
+        total_parsed=summary.total_parsed,
+        names_imported=imported,
+        names_skipped_credit=[
+            ImportedCustomerInfo(name=e.name, amount=e.amount)
+            for e in summary.credit_entries
+        ],
+        names_skipped_duplicate=skipped_dup,
+    )
