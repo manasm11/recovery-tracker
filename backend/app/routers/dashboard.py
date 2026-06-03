@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
 
 def _all_statuses(db: Session) -> list[CustomerStatus]:
     today = date.today()
-    customers = db.query(Customer).all()
+    customers = db.query(Customer).filter(Customer.deleted_at.is_(None)).all()
     return [compute_status(c, today) for c in customers]
 
 

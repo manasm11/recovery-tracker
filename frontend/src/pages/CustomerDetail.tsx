@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate, todayISO } from '../lib/format'
 import type { Contact, CustomerWithReminders, Reminder } from '../lib/types'
 
 export function CustomerDetail() {
   const { id } = useParams<{ id: string }>()
+  const navigate = useNavigate()
   const [customer, setCustomer] = useState<CustomerWithReminders | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -165,6 +166,16 @@ export function CustomerDetail() {
             <p className="mt-1 text-sm text-slate-500">{customer.phone}</p>
           )}
         </div>
+        <button
+          onClick={async () => {
+            if (!confirm(`Delete "${customer.name}"? You can restore them from the Deleted page.`)) return
+            await api.delete(`/api/customers/${id}`)
+            navigate('/customers')
+          }}
+          className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+        >
+          Delete customer
+        </button>
       </div>
 
       {/* Contacts Section */}

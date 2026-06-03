@@ -1,4 +1,7 @@
+import asyncio
+import logging
 from contextlib import asynccontextmanager
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -9,13 +12,44 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
 from app.database import SessionLocal
+from app.models import Customer
 from app.routers import auth, contacts, customers, dashboard, reminders
 from app.seed import init_db, seed_users
 
+logger = logging.getLogger(__name__)
+
 settings = get_settings()
 
-# Directory holding the built frontend (frontend/dist copied here at build time).
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
+
+PURGE_DAYS = 365
+PURGE_INTERVAL_HOURS = 24
+
+
+async def purge_old_deleted_customers() -> None:
+    while True:
+        try:
+            db = SessionLocal()
+            try:
+                cutoff = datetime.now(UTC) - timedelta(days=PURGE_DAYS)
+                old = (
+                    db.query(Customer)
+                    .filter(
+                        Customer.deleted_at.isnot(None),
+                        Customer.deleted_at < cutoff,
+                    )
+                    .all()
+                )
+                if old:
+                    for c in old:
+                        db.delete(c)
+                    db.commit()
+                    logger.info("Purged %d customers deleted >%d days ago", len(old), PURGE_DAYS)
+            finally:
+                db.close()
+        except Exception:
+            logger.exception("Error during purge task")
+        await asyncio.sleep(PURGE_INTERVAL_HOURS * 3600)
 
 
 @asynccontextmanager
@@ -26,7 +60,9 @@ async def lifespan(app: FastAPI):
         seed_users(db)
     finally:
         db.close()
+    task = asyncio.create_task(purge_old_deleted_customers())
     yield
+    task.cancel()
 
 
 app = FastAPI(title="Recovery Tracker API", version="0.1.0", lifespan=lifespan)
@@ -51,8 +87,6 @@ def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Serve the built single-page frontend (if present) for everything that is not
-# an API route. Client-side routes fall back to index.html.
 if STATIC_DIR.is_dir():
     app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
 
