@@ -45,8 +45,8 @@ export function Customers() {
   async function handleAdd(e: FormEvent) {
     e.preventDefault()
     setError(null)
-    if (!name.trim() || !phone.trim()) {
-      setError('Name and phone are required.')
+    if (!name.trim()) {
+      setError('Name is required.')
       return
     }
     setSaving(true)

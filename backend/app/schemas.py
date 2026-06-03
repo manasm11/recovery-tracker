@@ -48,7 +48,7 @@ class CustomerCreate(CustomerBase):
 
 class CustomerUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=200)
-    phone: str | None = Field(default=None, min_length=1, max_length=40)
+    phone: str | None = Field(default=None, max_length=40)
 
 
 class CustomerOut(CustomerBase):
@@ -58,7 +58,28 @@ class CustomerOut(CustomerBase):
     created_at: datetime
 
 
+class ContactOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    customer_id: int
+    contact_name: str
+    phone: str
+    created_at: datetime
+
+
+class ContactCreate(BaseModel):
+    contact_name: str = Field(default="", max_length=200)
+    phone: str = Field(min_length=1, max_length=40)
+
+
+class ContactUpdate(BaseModel):
+    contact_name: str | None = Field(default=None, max_length=200)
+    phone: str | None = Field(default=None, min_length=1, max_length=40)
+
+
 class CustomerWithReminders(CustomerOut):
+    contacts: list[ContactOut] = []
     reminders: list[ReminderOut] = []
 
 
