@@ -37,7 +37,16 @@ export interface CustomerStatus extends Customer {
   status: CustomerStatusValue
 }
 
+export interface Contact {
+  id: number
+  customer_id: number
+  contact_name: string
+  phone: string
+  created_at: string
+}
+
 export interface CustomerWithReminders extends Customer {
+  contacts: Contact[]
   reminders: Reminder[]
 }
 

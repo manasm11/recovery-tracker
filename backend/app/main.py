@@ -9,7 +9,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
 from app.database import SessionLocal
-from app.routers import auth, customers, dashboard, reminders
+from app.routers import auth, contacts, customers, dashboard, reminders
 from app.seed import init_db, seed_users
 
 settings = get_settings()
@@ -41,6 +41,7 @@ app.add_middleware(
 
 app.include_router(auth.router)
 app.include_router(customers.router)
+app.include_router(contacts.router)
 app.include_router(reminders.router)
 app.include_router(dashboard.router)
 
