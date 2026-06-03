@@ -3,7 +3,16 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate } from '../lib/format'
 import { StatusBadge } from '../components/StatusBadge'
-import type { CustomerStatus } from '../lib/types'
+import type { CustomerStatus, CustomerStatusValue } from '../lib/types'
+
+const STATUS_FILTERS: { value: CustomerStatusValue | ''; label: string }[] = [
+  { value: '', label: 'All' },
+  { value: 'overdue', label: 'Overdue' },
+  { value: 'due_today', label: 'Due today' },
+  { value: 'upcoming', label: 'Upcoming' },
+  { value: 'no_followup', label: 'No follow-up' },
+  { value: 'never_contacted', label: 'Never contacted' },
+]
 
 export function Customers() {
   const [items, setItems] = useState<CustomerStatus[]>([])
@@ -15,13 +24,15 @@ export function Customers() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [statusFilter, setStatusFilter] = useState<CustomerStatusValue | ''>('')
 
-  async function load(searchValue = '') {
+  async function load(searchValue = '', status: CustomerStatusValue | '' = statusFilter) {
     setLoading(true)
     try {
-      const { data } = await api.get<CustomerStatus[]>('/api/customers', {
-        params: searchValue ? { search: searchValue } : {},
-      })
+      const params: Record<string, string> = {}
+      if (searchValue) params.search = searchValue
+      if (status) params.status = status
+      const { data } = await api.get<CustomerStatus[]>('/api/customers', { params })
       setItems(data)
     } finally {
       setLoading(false)
@@ -143,7 +154,7 @@ export function Customers() {
         </form>
       )}
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <input
           value={search}
           onChange={(e) => {
@@ -153,6 +164,24 @@ export function Customers() {
           placeholder="Search by name or phone…"
           className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
         />
+        <div className="flex flex-wrap gap-1.5">
+          {STATUS_FILTERS.map((f) => (
+            <button
+              key={f.value}
+              onClick={() => {
+                setStatusFilter(f.value)
+                load(search, f.value)
+              }}
+              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                statusFilter === f.value
+                  ? 'bg-slate-900 text-white'
+                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+              }`}
+            >
+              {f.label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {loading ? (
