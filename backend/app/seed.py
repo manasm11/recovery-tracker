@@ -15,6 +15,8 @@ logger = logging.getLogger(__name__)
 _MIGRATIONS: list[tuple[str, str, str]] = [
     ("customers", "deleted_at", "ALTER TABLE customers ADD COLUMN deleted_at DATETIME"),
     ("customers", "balance", "ALTER TABLE customers ADD COLUMN balance FLOAT"),
+    ("reminders", "deleted_at", "ALTER TABLE reminders ADD COLUMN deleted_at DATETIME"),
+    ("contacts", "deleted_at", "ALTER TABLE contacts ADD COLUMN deleted_at DATETIME"),
 ]
 
 
