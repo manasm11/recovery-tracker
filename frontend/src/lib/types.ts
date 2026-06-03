@@ -27,6 +27,8 @@ export interface Customer {
   name: string
   phone: string | null
   created_at: string
+  deleted_at: string | null
+  balance: number | null
 }
 
 export interface CustomerStatus extends Customer {
@@ -48,6 +50,16 @@ export interface Contact {
 export interface CustomerWithReminders extends Customer {
   contacts: Contact[]
   reminders: Reminder[]
+}
+
+export interface DeletedCustomer {
+  id: number
+  name: string
+  phone: string
+  created_at: string
+  deleted_at: string
+  balance: number | null
+  days_until_purge: number
 }
 
 export interface DashboardStats {

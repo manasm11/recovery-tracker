@@ -56,6 +56,8 @@ class CustomerOut(CustomerBase):
 
     id: int
     created_at: datetime
+    deleted_at: datetime | None = None
+    balance: float | None = None
 
 
 class ContactOut(BaseModel):
@@ -92,6 +94,18 @@ class CustomerStatus(CustomerOut):
     reminders_count: int = 0
     # "due_today", "overdue", "upcoming", "no_followup", "never_contacted"
     status: str
+
+
+class DeletedCustomerOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+    phone: str
+    created_at: datetime
+    deleted_at: datetime
+    balance: float | None = None
+    days_until_purge: int = 0
 
 
 # ---- Dashboard ----

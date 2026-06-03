@@ -1,4 +1,4 @@
-from datetime import date
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
@@ -12,6 +12,7 @@ from app.schemas import (
     CustomerStatus,
     CustomerUpdate,
     CustomerWithReminders,
+    DeletedCustomerOut,
     ImportedCustomerInfo,
     ImportRequest,
     ImportResult,
@@ -20,6 +21,42 @@ from app.services import compute_status
 
 router = APIRouter(prefix="/api/customers", tags=["customers"])
 
+PURGE_DAYS = 365
+
+
+def _active_query(db: Session):
+    return db.query(Customer).filter(Customer.deleted_at.is_(None))
+
+
+@router.get("/deleted", response_model=list[DeletedCustomerOut])
+def list_deleted_customers(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> list[DeletedCustomerOut]:
+    customers = (
+        db.query(Customer)
+        .filter(Customer.deleted_at.isnot(None))
+        .order_by(Customer.deleted_at.desc())
+        .all()
+    )
+    now = datetime.now(UTC)
+    result = []
+    for c in customers:
+        days_passed = (now - c.deleted_at).days
+        days_left = max(0, PURGE_DAYS - days_passed)
+        result.append(
+            DeletedCustomerOut(
+                id=c.id,
+                name=c.name,
+                phone=c.phone,
+                created_at=c.created_at,
+                deleted_at=c.deleted_at,
+                balance=c.balance,
+                days_until_purge=days_left,
+            )
+        )
+    return result
+
 
 @router.get("", response_model=list[CustomerStatus])
 def list_customers(
@@ -27,7 +64,7 @@ def list_customers(
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[CustomerStatus]:
-    query = db.query(Customer)
+    query = _active_query(db)
     if search:
         like = f"%{search.strip()}%"
         query = query.filter((Customer.name.ilike(like)) | (Customer.phone.ilike(like)))
@@ -58,7 +95,7 @@ def get_customer(
     _: User = Depends(get_current_user),
 ) -> Customer:
     customer = db.get(Customer, customer_id)
-    if customer is None:
+    if customer is None or customer.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Customer not found")
     return customer
 
@@ -71,7 +108,7 @@ def update_customer(
     _: User = Depends(get_current_user),
 ) -> CustomerStatus:
     customer = db.get(Customer, customer_id)
-    if customer is None:
+    if customer is None or customer.deleted_at is not None:
         raise HTTPException(status_code=404, detail="Customer not found")
     if payload.name is not None:
         customer.name = payload.name.strip()
@@ -91,8 +128,27 @@ def delete_customer(
     customer = db.get(Customer, customer_id)
     if customer is None:
         raise HTTPException(status_code=404, detail="Customer not found")
-    db.delete(customer)
+    if customer.deleted_at is not None:
+        return
+    customer.deleted_at = datetime.now(UTC)
     db.commit()
+
+
+@router.post("/{customer_id}/restore", response_model=CustomerStatus)
+def restore_customer(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> CustomerStatus:
+    customer = db.get(Customer, customer_id)
+    if customer is None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    if customer.deleted_at is None:
+        raise HTTPException(status_code=400, detail="Customer is not deleted")
+    customer.deleted_at = None
+    db.commit()
+    db.refresh(customer)
+    return compute_status(customer, date.today())
 
 
 @router.post("/import", response_model=ImportResult)
@@ -103,7 +159,6 @@ def import_customers(
 ) -> ImportResult:
     summary = parse_ledger(payload.text)
 
-    # Build a set of existing names (upper-cased) for duplicate detection.
     existing_names: set[str] = {
         row.name.strip().upper() for row in db.query(Customer.name).all()
     }
@@ -116,7 +171,14 @@ def import_customers(
         if norm in existing_names:
             skipped_dup.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
             continue
-        db.add(Customer(name=entry.name.strip(), phone="", created_by=user.id))
+        db.add(
+            Customer(
+                name=entry.name.strip(),
+                phone="",
+                created_by=user.id,
+                balance=entry.amount,
+            )
+        )
         existing_names.add(norm)
         imported.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
 

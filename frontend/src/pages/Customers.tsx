@@ -14,6 +14,7 @@ export function Customers() {
   const [phone, setPhone] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<number | null>(null)
 
   async function load(searchValue = '') {
     setLoading(true)
@@ -63,6 +64,17 @@ export function Customers() {
     }
   }
 
+  async function handleDelete(id: number, name: string) {
+    if (!confirm(`Delete "${name}"? You can restore them from the Deleted page.`)) return
+    setDeleting(id)
+    try {
+      await api.delete(`/api/customers/${id}`)
+      await load(search)
+    } finally {
+      setDeleting(null)
+    }
+  }
+
   return (
     <div>
       <div className="mb-5 flex items-center justify-between gap-4">
@@ -71,6 +83,12 @@ export function Customers() {
           <p className="mt-1 text-sm text-slate-500">All customers under recovery.</p>
         </div>
         <div className="flex gap-2">
+          <Link
+            to="/customers/deleted"
+            className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          >
+            Deleted
+          </Link>
           <Link
             to="/import"
             className="rounded-md border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100"
@@ -186,12 +204,21 @@ export function Customers() {
                     <StatusBadge status={c.status} />
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <Link
-                      to={`/customers/${c.id}`}
-                      className="text-sm font-medium text-slate-900 hover:underline"
-                    >
-                      View
-                    </Link>
+                    <div className="flex items-center justify-end gap-3">
+                      <Link
+                        to={`/customers/${c.id}`}
+                        className="text-sm font-medium text-slate-900 hover:underline"
+                      >
+                        View
+                      </Link>
+                      <button
+                        onClick={() => handleDelete(c.id, c.name)}
+                        disabled={deleting === c.id}
+                        className="text-sm font-medium text-slate-400 hover:text-red-600 disabled:opacity-60"
+                      >
+                        {deleting === c.id ? '…' : 'Delete'}
+                      </button>
+                    </div>
                   </td>
                 </tr>
               ))}
