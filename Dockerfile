@@ -17,6 +17,8 @@ WORKDIR /app
 ENV PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
+RUN apt-get update && apt-get install -y --no-install-recommends libmagic1 && rm -rf /var/lib/apt/lists/*
+
 COPY backend/pyproject.toml ./
 COPY backend/app ./app
 COPY backend/main.py ./

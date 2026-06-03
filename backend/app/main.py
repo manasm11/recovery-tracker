@@ -10,10 +10,12 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
+from app import whatsapp
 from app.config import get_settings
 from app.database import SessionLocal
 from app.models import Contact, Customer, Reminder
 from app.routers import auth, contacts, customers, dashboard, reminders
+from app.routers import whatsapp as whatsapp_router
 from app.seed import init_db, seed_users
 
 logger = logging.getLogger(__name__)
@@ -66,6 +68,7 @@ async def lifespan(app: FastAPI):
     finally:
         db.close()
     task = asyncio.create_task(purge_old_deleted_records())
+    whatsapp.start()
     yield
     task.cancel()
 
@@ -85,6 +88,7 @@ app.include_router(customers.router)
 app.include_router(contacts.router)
 app.include_router(reminders.router)
 app.include_router(dashboard.router)
+app.include_router(whatsapp_router.router)
 
 
 @app.get("/api/health", tags=["health"])
