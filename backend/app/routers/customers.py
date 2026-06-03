@@ -61,6 +61,7 @@ def list_deleted_customers(
 @router.get("", response_model=list[CustomerStatus])
 def list_customers(
     search: str | None = Query(default=None),
+    status_filter: str | None = Query(default=None, alias="status"),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
 ) -> list[CustomerStatus]:
@@ -70,7 +71,10 @@ def list_customers(
         query = query.filter((Customer.name.ilike(like)) | (Customer.phone.ilike(like)))
     customers = query.order_by(Customer.name.asc()).all()
     today = date.today()
-    return [compute_status(c, today) for c in customers]
+    results = [compute_status(c, today) for c in customers]
+    if status_filter:
+        results = [r for r in results if r.status == status_filter]
+    return results
 
 
 @router.post("", response_model=CustomerStatus, status_code=status.HTTP_201_CREATED)
