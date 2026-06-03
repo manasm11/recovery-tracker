@@ -20,6 +20,7 @@ export interface Reminder {
   notes: string
   next_date: string | null
   created_at: string
+  deleted_at: string | null
 }
 
 export interface Customer {
@@ -45,6 +46,7 @@ export interface Contact {
   contact_name: string
   phone: string
   created_at: string
+  deleted_at: string | null
 }
 
 export interface CustomerWithReminders extends Customer {

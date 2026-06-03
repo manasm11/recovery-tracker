@@ -12,7 +12,7 @@ from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from app.config import get_settings
 from app.database import SessionLocal
-from app.models import Customer
+from app.models import Contact, Customer, Reminder
 from app.routers import auth, contacts, customers, dashboard, reminders
 from app.seed import init_db, seed_users
 
@@ -26,25 +26,30 @@ PURGE_DAYS = 365
 PURGE_INTERVAL_HOURS = 24
 
 
-async def purge_old_deleted_customers() -> None:
+async def purge_old_deleted_records() -> None:
     while True:
         try:
             db = SessionLocal()
             try:
                 cutoff = datetime.now(UTC) - timedelta(days=PURGE_DAYS)
-                old = (
-                    db.query(Customer)
-                    .filter(
-                        Customer.deleted_at.isnot(None),
-                        Customer.deleted_at < cutoff,
+                for model, label in [
+                    (Reminder, "reminders"),
+                    (Contact, "contacts"),
+                    (Customer, "customers"),
+                ]:
+                    old = (
+                        db.query(model)
+                        .filter(
+                            model.deleted_at.isnot(None),
+                            model.deleted_at < cutoff,
+                        )
+                        .all()
                     )
-                    .all()
-                )
-                if old:
-                    for c in old:
-                        db.delete(c)
-                    db.commit()
-                    logger.info("Purged %d customers deleted >%d days ago", len(old), PURGE_DAYS)
+                    if old:
+                        for rec in old:
+                            db.delete(rec)
+                        db.commit()
+                        logger.info("Purged %d %s deleted >%d days ago", len(old), label, PURGE_DAYS)
             finally:
                 db.close()
         except Exception:
@@ -60,7 +65,7 @@ async def lifespan(app: FastAPI):
         seed_users(db)
     finally:
         db.close()
-    task = asyncio.create_task(purge_old_deleted_customers())
+    task = asyncio.create_task(purge_old_deleted_records())
     yield
     task.cancel()
 

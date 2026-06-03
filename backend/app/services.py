@@ -10,7 +10,7 @@ def compute_status(customer: Customer, today: date) -> CustomerStatus:
     The reminders relationship is ordered by reminder_date desc, so the first
     element (if any) is the most recent reminder.
     """
-    reminders = list(customer.reminders)
+    reminders = [r for r in customer.reminders if r.deleted_at is None]
     count = len(reminders)
 
     if count == 0:

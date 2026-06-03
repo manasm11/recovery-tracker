@@ -29,12 +29,24 @@ export function CustomerDetail() {
   const [editContactName, setEditContactName] = useState('')
   const [editContactPhone, setEditContactPhone] = useState('')
 
+  // Deleted items state
+  const [deletedReminders, setDeletedReminders] = useState<Reminder[]>([])
+  const [deletedContacts, setDeletedContacts] = useState<Contact[]>([])
+  const [showDeletedReminders, setShowDeletedReminders] = useState(false)
+  const [showDeletedContacts, setShowDeletedContacts] = useState(false)
+
   const load = useCallback(async () => {
     if (!id) return
     setLoading(true)
     try {
       const { data } = await api.get<CustomerWithReminders>(`/api/customers/${id}`)
       setCustomer(data)
+      const [delRem, delCon] = await Promise.all([
+        api.get<Reminder[]>(`/api/customers/${id}/reminders/deleted`),
+        api.get<Contact[]>(`/api/customers/${id}/contacts/deleted`),
+      ])
+      setDeletedReminders(delRem.data)
+      setDeletedContacts(delCon.data)
     } catch {
       setNotFound(true)
     } finally {
@@ -43,23 +55,8 @@ export function CustomerDetail() {
   }, [id])
 
   useEffect(() => {
-    if (!id) return
-    let active = true
-    api
-      .get<CustomerWithReminders>(`/api/customers/${id}`)
-      .then((res) => {
-        if (active) setCustomer(res.data)
-      })
-      .catch(() => {
-        if (active) setNotFound(true)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [id])
+    load()
+  }, [load])
 
   async function handleAddReminder(e: FormEvent) {
     e.preventDefault()
@@ -87,8 +84,13 @@ export function CustomerDetail() {
   }
 
   async function handleDeleteReminder(reminder: Reminder) {
-    if (!confirm('Delete this reminder entry?')) return
+    if (!confirm('Delete this reminder entry? You can restore it later.')) return
     await api.delete(`/api/customers/${id}/reminders/${reminder.id}`)
+    await load()
+  }
+
+  async function handleRestoreReminder(reminder: Reminder) {
+    await api.post(`/api/customers/${id}/reminders/${reminder.id}/restore`)
     await load()
   }
 
@@ -137,8 +139,13 @@ export function CustomerDetail() {
   }
 
   async function handleDeleteContact(contact: Contact) {
-    if (!confirm(`Delete contact ${contact.contact_name || contact.phone}?`)) return
+    if (!confirm(`Delete contact ${contact.contact_name || contact.phone}? You can restore it later.`)) return
     await api.delete(`/api/customers/${id}/contacts/${contact.id}`)
+    await load()
+  }
+
+  async function handleRestoreContact(contact: Contact) {
+    await api.post(`/api/customers/${id}/contacts/${contact.id}/restore`)
     await load()
   }
 
@@ -306,6 +313,42 @@ export function CustomerDetail() {
             ))}
           </div>
         )}
+
+        {deletedContacts.length > 0 && (
+          <div className="mt-4">
+            <button
+              onClick={() => setShowDeletedContacts((v) => !v)}
+              className="text-sm font-medium text-slate-500 hover:underline"
+            >
+              {showDeletedContacts ? 'Hide' : 'Show'} deleted contacts ({deletedContacts.length})
+            </button>
+            {showDeletedContacts && (
+              <div className="mt-2 space-y-2">
+                {deletedContacts.map((c) => (
+                  <div
+                    key={c.id}
+                    className="flex items-center justify-between rounded-lg border border-red-100 bg-red-50 px-4 py-2.5"
+                  >
+                    <div>
+                      <span className="text-sm font-medium text-slate-500 line-through">
+                        {c.phone}
+                      </span>
+                      {c.contact_name && (
+                        <span className="ml-2 text-sm text-slate-400">({c.contact_name})</span>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleRestoreContact(c)}
+                      className="text-xs font-medium text-green-700 hover:underline"
+                    >
+                      Restore
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-5">
@@ -404,6 +447,50 @@ export function CustomerDetail() {
                 </li>
               ))}
             </ol>
+          )}
+
+          {deletedReminders.length > 0 && (
+            <div className="mt-4">
+              <button
+                onClick={() => setShowDeletedReminders((v) => !v)}
+                className="text-sm font-medium text-slate-500 hover:underline"
+              >
+                {showDeletedReminders ? 'Hide' : 'Show'} deleted reminders ({deletedReminders.length})
+              </button>
+              {showDeletedReminders && (
+                <ol className="mt-2 space-y-3">
+                  {deletedReminders.map((r) => (
+                    <li
+                      key={r.id}
+                      className="rounded-xl border border-red-100 bg-red-50 p-4"
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="text-sm font-medium text-slate-500 line-through">
+                            Called on {formatDate(r.reminder_date)}
+                          </p>
+                          <p className="mt-0.5 text-xs text-slate-400">
+                            Next promised:{' '}
+                            <span className="font-medium">{formatDate(r.next_date)}</span>
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleRestoreReminder(r)}
+                          className="text-xs font-medium text-green-700 hover:underline"
+                        >
+                          Restore
+                        </button>
+                      </div>
+                      {r.notes && (
+                        <p className="mt-2 whitespace-pre-wrap rounded-md bg-white/60 p-3 text-sm text-slate-500">
+                          {r.notes}
+                        </p>
+                      )}
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </div>
           )}
         </div>
       </div>

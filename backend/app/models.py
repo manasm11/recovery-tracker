@@ -57,6 +57,9 @@ class Contact(Base):
     contact_name: Mapped[str] = mapped_column(String(200), nullable=False, default="")
     phone: Mapped[str] = mapped_column(String(40), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
     customer: Mapped["Customer"] = relationship(back_populates="contacts")
 
@@ -76,5 +79,8 @@ class Reminder(Base):
     next_date: Mapped[date | None] = mapped_column(Date, nullable=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
+    deleted_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, default=None
+    )
 
     customer: Mapped["Customer"] = relationship(back_populates="reminders")

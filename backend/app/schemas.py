@@ -34,6 +34,7 @@ class ReminderOut(ReminderBase):
     id: int
     customer_id: int
     created_at: datetime
+    deleted_at: datetime | None = None
 
 
 # ---- Customers ----
@@ -68,6 +69,7 @@ class ContactOut(BaseModel):
     contact_name: str
     phone: str
     created_at: datetime
+    deleted_at: datetime | None = None
 
 
 class ContactCreate(BaseModel):
