@@ -35,7 +35,7 @@ def get_state() -> WhatsAppState:
 
 def _run_client(db_path: str) -> None:
     """Entry point for the neonize background thread."""
-    client = NewClient("recovery_whatsapp", database=db_path)
+    client = NewClient(db_path)
     _state.client = client
 
     @client.event(ConnectedEv)
