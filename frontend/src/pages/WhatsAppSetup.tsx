@@ -24,6 +24,7 @@ export function WhatsAppSetup() {
   const [pairLoading, setPairLoading] = useState(false)
   const [pairError, setPairError] = useState<string | null>(null)
   const [restarting, setRestarting] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
 
   const fetchQr = useCallback(async () => {
     try {
@@ -95,6 +96,18 @@ export function WhatsAppSetup() {
     }
   }
 
+  async function handleLogout() {
+    if (!confirm('Disconnect WhatsApp? You will need to scan QR or enter a pairing code again to reconnect.')) return
+    setLoggingOut(true)
+    try {
+      await api.post('/api/whatsapp/logout')
+    } catch {
+      // ignore
+    } finally {
+      setTimeout(() => setLoggingOut(false), 3000)
+    }
+  }
+
   return (
     <div>
       <h1 className="mb-1 text-2xl font-semibold text-slate-900">WhatsApp Connection</h1>
@@ -106,9 +119,19 @@ export function WhatsAppSetup() {
         <p className="text-sm text-slate-500">Checking connection…</p>
       ) : status?.connected ? (
         <div className="rounded-xl border border-green-200 bg-green-50 p-6 text-center">
-          <p className="text-lg font-semibold text-green-800">WhatsApp Connected ✓</p>
+          <p className="text-lg font-semibold text-green-800">WhatsApp Connected</p>
           <p className="mt-1 text-sm text-green-700">
             You can now send balance reminders from the customer detail page.
+          </p>
+          <button
+            onClick={handleLogout}
+            disabled={loggingOut}
+            className="mt-4 rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+          >
+            {loggingOut ? 'Disconnecting…' : 'Disconnect & Connect Another Number'}
+          </button>
+          <p className="mt-1 text-xs text-slate-400">
+            This will unlink the device and show QR/pairing options again
           </p>
         </div>
       ) : (
