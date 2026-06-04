@@ -29,6 +29,9 @@ export function Layout() {
               <NavLink to="/customers" className={navClass}>
                 Customers
               </NavLink>
+              <NavLink to="/whatsapp" className={navClass}>
+                WhatsApp
+              </NavLink>
               {user?.role === 'admin' && (
                 <NavLink to="/dashboard" className={navClass}>
                   Dashboard

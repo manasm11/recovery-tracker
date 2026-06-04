@@ -19,6 +19,8 @@ dependencies = [
     "python-multipart>=0.0.9",
     "psycopg2-binary>=2.9.9",
     "email-validator>=2.1.0",
+    "neonize>=0.3.18",
+    "qrcode[pil]>=7.4",
 ]
 
 [project.optional-dependencies]

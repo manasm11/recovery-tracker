@@ -8,6 +8,7 @@ import { CustomerDetail } from './pages/CustomerDetail'
 import { Dashboard } from './pages/Dashboard'
 import { ImportCustomers } from './pages/ImportCustomers'
 import { DeletedCustomers } from './pages/DeletedCustomers'
+import { WhatsAppSetup } from './pages/WhatsAppSetup'
 import type { JSX } from 'react'
 
 function RequireAuth({ children }: { children: JSX.Element }) {
@@ -46,6 +47,7 @@ export default function App() {
         <Route path="/customers/deleted" element={<DeletedCustomers />} />
         <Route path="/customers/:id" element={<CustomerDetail />} />
         <Route path="/import" element={<ImportCustomers />} />
+        <Route path="/whatsapp" element={<WhatsAppSetup />} />
         <Route
           path="/dashboard"
           element={

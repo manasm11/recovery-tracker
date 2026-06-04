@@ -163,27 +163,28 @@ def import_customers(
 ) -> ImportResult:
     summary = parse_ledger(payload.text)
 
-    existing_names: set[str] = {
-        row.name.strip().upper() for row in db.query(Customer.name).all()
-    }
-
     imported: list[ImportedCustomerInfo] = []
     skipped_dup: list[ImportedCustomerInfo] = []
 
+    existing_customers: dict[str, Customer] = {
+        row.name.strip().upper(): row
+        for row in _active_query(db).all()
+    }
+
     for entry in summary.debit_entries:
         norm = entry.name.strip().upper()
-        if norm in existing_names:
+        if norm in existing_customers:
+            existing_customers[norm].balance = entry.amount
             skipped_dup.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
             continue
-        db.add(
-            Customer(
-                name=entry.name.strip(),
-                phone="",
-                created_by=user.id,
-                balance=entry.amount,
-            )
+        customer = Customer(
+            name=entry.name.strip(),
+            phone="",
+            created_by=user.id,
+            balance=entry.amount,
         )
-        existing_names.add(norm)
+        db.add(customer)
+        existing_customers[norm] = customer
         imported.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
 
     db.commit()
