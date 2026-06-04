@@ -89,6 +89,52 @@ def start(db_path: str = "./data/whatsapp.db") -> None:
     logger.info("WhatsApp background thread started")
 
 
+def logout() -> bool:
+    """Log out from WhatsApp (unlink device) and restart with fresh session."""
+    import os
+
+    with _state._lock:
+        client = _state.client
+
+    # Try to logout gracefully via the WhatsApp protocol
+    if client is not None:
+        try:
+            client.logout()
+            logger.info("WhatsApp logout successful")
+        except Exception:
+            logger.exception("WhatsApp logout call failed — will clear session anyway")
+
+    db_path = _state._db_path
+
+    # Reset state
+    with _state._lock:
+        _state.connected = False
+        _state.qr_data = None
+        _state.pair_code = None
+        _state._ready = False
+        _state.client = None
+
+    # Remove session DB so a fresh pairing is required
+    if os.path.exists(db_path):
+        try:
+            os.remove(db_path)
+            logger.info("Removed WhatsApp session DB: %s", db_path)
+        except OSError:
+            logger.warning("Could not remove WhatsApp DB: %s", db_path)
+
+    # Wait for old thread to die
+    if _state._thread is not None:
+        _state._thread.join(timeout=5)
+
+    # Start fresh client
+    t = threading.Thread(target=_run_client, args=(db_path,), daemon=True)
+    t.start()
+    with _state._lock:
+        _state._thread = t
+    logger.info("WhatsApp client restarted after logout")
+    return True
+
+
 def restart() -> None:
     """Restart the WhatsApp client (clear session and reconnect)."""
     import os

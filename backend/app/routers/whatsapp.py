@@ -75,6 +75,16 @@ def wa_pair(req: PairRequest, _: User = Depends(get_current_user)) -> PairResult
     )
 
 
+@router.post("/logout", response_model=SendResult)
+def wa_logout(_: User = Depends(get_current_user)) -> SendResult:
+    """Log out from WhatsApp (unlink device) and allow reconnecting with another number."""
+    try:
+        whatsapp.logout()
+        return SendResult(success=True, detail="Logged out — you can now connect with a different number")
+    except Exception as e:
+        return SendResult(success=False, detail=f"Logout failed: {e}")
+
+
 @router.post("/restart", response_model=SendResult)
 def wa_restart(_: User = Depends(get_current_user)) -> SendResult:
     """Restart the WhatsApp client (clears session, generates fresh QR)."""
