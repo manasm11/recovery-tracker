@@ -118,6 +118,8 @@ def update_customer(
         customer.name = payload.name.strip()
     if payload.phone is not None:
         customer.phone = payload.phone.strip()
+    if payload.balance is not None:
+        customer.balance = payload.balance
     db.commit()
     db.refresh(customer)
     return compute_status(customer, date.today())
