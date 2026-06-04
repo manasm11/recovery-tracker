@@ -24,6 +24,16 @@ class SendResult(BaseModel):
     detail: str
 
 
+class PairRequest(BaseModel):
+    phone: str
+
+
+class PairResult(BaseModel):
+    success: bool
+    code: str | None = None
+    detail: str
+
+
 @router.get("/status", response_model=StatusOut)
 def wa_status(_: User = Depends(get_current_user)) -> StatusOut:
     return StatusOut(
@@ -40,6 +50,39 @@ def wa_qr(_: User = Depends(get_current_user)) -> Response:
             raise HTTPException(400, "Already connected — no QR needed")
         raise HTTPException(404, "No QR code available yet — try again shortly")
     return Response(content=png, media_type="image/png")
+
+
+@router.post("/pair", response_model=PairResult)
+def wa_pair(req: PairRequest, _: User = Depends(get_current_user)) -> PairResult:
+    """Request a pairing code for the given phone number.
+
+    This is an alternative to QR scanning — the user enters the code
+    in WhatsApp (Settings → Linked Devices → Link with phone number).
+    """
+    if whatsapp.is_connected():
+        return PairResult(success=True, code=None, detail="Already connected")
+
+    if not whatsapp.is_ready():
+        raise HTTPException(503, "WhatsApp client not ready — please wait a moment")
+
+    code = whatsapp.pair_phone(req.phone)
+    if code:
+        return PairResult(success=True, code=code, detail="Enter this code in WhatsApp")
+    return PairResult(
+        success=False,
+        code=None,
+        detail="Failed to generate pairing code — try again",
+    )
+
+
+@router.post("/restart", response_model=SendResult)
+def wa_restart(_: User = Depends(get_current_user)) -> SendResult:
+    """Restart the WhatsApp client (clears session, generates fresh QR)."""
+    try:
+        whatsapp.restart()
+        return SendResult(success=True, detail="WhatsApp client restarted — new QR will appear shortly")
+    except Exception as e:
+        return SendResult(success=False, detail=f"Restart failed: {e}")
 
 
 @router.post("/send", response_model=SendResult)
