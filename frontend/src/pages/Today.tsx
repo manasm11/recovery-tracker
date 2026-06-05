@@ -283,7 +283,14 @@ export function Today() {
                 <tbody className="divide-y divide-slate-100">
                   {items.map((c) => (
                     <tr key={c.id} className="hover:bg-slate-50">
-                      <td className="px-4 py-3 text-sm font-medium text-slate-900">{c.name}</td>
+                      <td className="px-4 py-3 text-sm font-medium text-slate-900">
+                        {c.name}
+                        {c.monopoly_flag && (
+                          <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700" title="Ask for monopoly product order">
+                            Monopoly
+                          </span>
+                        )}
+                      </td>
                       <td className="px-4 py-3 text-sm text-slate-600">{c.phone}</td>
                       <td className="px-4 py-3 text-sm text-slate-600">{formatDate(c.next_date)}</td>
                       <td className="max-w-xs truncate px-4 py-3 text-sm text-slate-500">

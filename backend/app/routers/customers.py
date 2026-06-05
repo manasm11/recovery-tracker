@@ -155,6 +155,23 @@ def restore_customer(
     return compute_status(customer, date.today())
 
 
+@router.patch("/{customer_id}/monopoly-flag", response_model=CustomerStatus)
+def toggle_monopoly_flag(
+    customer_id: int,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> CustomerStatus:
+    if user.role != "admin":
+        raise HTTPException(status_code=403, detail="Only admins can set monopoly flag")
+    customer = db.get(Customer, customer_id)
+    if customer is None or customer.deleted_at is not None:
+        raise HTTPException(status_code=404, detail="Customer not found")
+    customer.monopoly_flag = not customer.monopoly_flag
+    db.commit()
+    db.refresh(customer)
+    return compute_status(customer, date.today())
+
+
 @router.post("/import", response_model=ImportResult)
 def import_customers(
     payload: ImportRequest,

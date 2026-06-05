@@ -17,6 +17,7 @@ _MIGRATIONS: list[tuple[str, str, str]] = [
     ("customers", "balance", "ALTER TABLE customers ADD COLUMN balance FLOAT"),
     ("reminders", "deleted_at", "ALTER TABLE reminders ADD COLUMN deleted_at DATETIME"),
     ("contacts", "deleted_at", "ALTER TABLE contacts ADD COLUMN deleted_at DATETIME"),
+    ("customers", "monopoly_flag", "ALTER TABLE customers ADD COLUMN monopoly_flag INTEGER NOT NULL DEFAULT 0"),
 ]
 
 

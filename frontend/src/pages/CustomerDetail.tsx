@@ -2,11 +2,13 @@ import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate, formatDateTime, todayISO } from '../lib/format'
+import { useAuth } from '../auth/AuthContext'
 import type { Contact, CustomerWithReminders, Reminder } from '../lib/types'
 
 export function CustomerDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { user: authUser } = useAuth()
   const [customer, setCustomer] = useState<CustomerWithReminders | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -202,7 +204,14 @@ export function CustomerDetail() {
 
       <div className="mt-3 mb-6 flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-slate-900">{customer.name}</h1>
+          <h1 className="text-2xl font-semibold text-slate-900">
+            {customer.name}
+            {customer.monopoly_flag && (
+              <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-semibold text-purple-700" title="Ask for monopoly product order">
+                Monopoly
+              </span>
+            )}
+          </h1>
           {customer.phone && (
             <p className="mt-1 text-sm text-slate-500">{customer.phone}</p>
           )}
@@ -212,16 +221,33 @@ export function CustomerDetail() {
             </p>
           )}
         </div>
-        <button
-          onClick={async () => {
-            if (!confirm(`Delete "${customer.name}"? You can restore them from the Deleted page.`)) return
-            await api.delete(`/api/customers/${id}`)
-            navigate('/customers')
-          }}
-          className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
-        >
-          Delete customer
-        </button>
+        <div className="flex gap-2">
+          {authUser?.role === 'admin' && (
+            <button
+              onClick={async () => {
+                await api.patch(`/api/customers/${id}/monopoly-flag`)
+                await load()
+              }}
+              className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
+                customer.monopoly_flag
+                  ? 'border-purple-300 bg-purple-50 text-purple-700 hover:bg-purple-100'
+                  : 'border-slate-300 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              {customer.monopoly_flag ? 'Remove Monopoly Flag' : 'Flag for Monopoly'}
+            </button>
+          )}
+          <button
+            onClick={async () => {
+              if (!confirm(`Delete "${customer.name}"? You can restore them from the Deleted page.`)) return
+              await api.delete(`/api/customers/${id}`)
+              navigate('/customers')
+            }}
+            className="rounded-md border border-red-200 px-3 py-1.5 text-sm font-medium text-red-600 hover:bg-red-50"
+          >
+            Delete customer
+          </button>
+        </div>
       </div>
 
       {/* Contacts Section */}
