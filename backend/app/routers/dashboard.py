@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.deps import get_current_user
 from app.models import Customer, Reminder, User
-from app.schemas import CustomerStatus, DailyCount, DashboardStats, MyActivity
+from app.schemas import CallDetail, CustomerStatus, DailyCount, DashboardStats, MyActivity
 from app.services import compute_status
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -82,3 +82,32 @@ def my_activity(
         calls_today=counts_map.get(today, 0),
         daily_counts=daily_counts,
     )
+
+
+@router.get("/calls-on-date", response_model=list[CallDetail])
+def calls_on_date(
+    target_date: date,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> list[CallDetail]:
+    """Return the list of customers called on a specific date by the current user."""
+    rows = (
+        db.query(Reminder, Customer.name)
+        .join(Customer, Reminder.customer_id == Customer.id)
+        .filter(
+            Reminder.created_by == user.id,
+            Reminder.deleted_at.is_(None),
+            Reminder.reminder_date == target_date,
+        )
+        .order_by(Reminder.id.asc())
+        .all()
+    )
+    return [
+        CallDetail(
+            customer_id=r.customer_id,
+            customer_name=name,
+            notes=r.notes,
+            reminder_date=r.reminder_date,
+        )
+        for r, name in rows
+    ]
