@@ -3,16 +3,19 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate } from '../lib/format'
 import { StatusBadge } from '../components/StatusBadge'
-import type { CallDetail, CustomerStatus, MyActivity } from '../lib/types'
+import { useAuth } from '../auth/AuthContext'
+import type { CallDetail, CustomerStatus, MyActivity, User } from '../lib/types'
 
 function ActivityCard({
   activity,
   selectedDate,
   onSelectDate,
+  label,
 }: {
   activity: MyActivity
   selectedDate: string | null
   onSelectDate: (date: string) => void
+  label: string
 }) {
   const maxCount = Math.max(...activity.daily_counts.map((d) => d.count), 1)
   const todayEntry = activity.daily_counts[activity.daily_counts.length - 1]
@@ -22,7 +25,7 @@ function ActivityCard({
     <div className="mb-6 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <div className="flex items-center justify-between">
         <div>
-          <p className="text-sm font-medium text-slate-500">Calls made today</p>
+          <p className="text-sm font-medium text-slate-500">{label}</p>
           <p className="mt-1 text-4xl font-bold text-slate-900">{activity.calls_today}</p>
         </div>
         {activity.calls_today >= 10 && (
@@ -128,6 +131,9 @@ function CallDetailsList({
 }
 
 export function Today() {
+  const { user: currentUser } = useAuth()
+  const isAdmin = currentUser?.role === 'admin'
+
   const [items, setItems] = useState<CustomerStatus[]>([])
   const [activity, setActivity] = useState<MyActivity | null>(null)
   const [loading, setLoading] = useState(true)
@@ -135,17 +141,38 @@ export function Today() {
   const [callDetails, setCallDetails] = useState<CallDetail[]>([])
   const [detailsLoading, setDetailsLoading] = useState(false)
 
+  const [users, setUsers] = useState<User[]>([])
+  const [viewingUserId, setViewingUserId] = useState<number | null>(null)
+
   useEffect(() => {
-    Promise.all([
-      api.get<CustomerStatus[]>('/api/dashboard/today'),
-      api.get<MyActivity>('/api/dashboard/my-activity'),
-    ])
-      .then(([todayRes, actRes]) => {
-        setItems(todayRes.data)
-        setActivity(actRes.data)
-      })
-      .finally(() => setLoading(false))
-  }, [])
+    const promises: Promise<unknown>[] = [
+      api.get<CustomerStatus[]>('/api/dashboard/today').then((res) => setItems(res.data)),
+      api.get<MyActivity>('/api/dashboard/my-activity').then((res) => setActivity(res.data)),
+    ]
+    if (isAdmin) {
+      promises.push(
+        api.get<User[]>('/api/dashboard/users').then((res) => setUsers(res.data)),
+      )
+    }
+    Promise.all(promises).finally(() => setLoading(false))
+  }, [isAdmin])
+
+  function loadActivity(userId: number | null) {
+    setActivity(null)
+    setSelectedDate(null)
+    setCallDetails([])
+    const params = userId ? { user_id: userId } : {}
+    api
+      .get<MyActivity>('/api/dashboard/my-activity', { params })
+      .then((res) => setActivity(res.data))
+  }
+
+  function handleUserChange(e: React.ChangeEvent<HTMLSelectElement>) {
+    const val = e.target.value
+    const uid = val === '' ? null : Number(val)
+    setViewingUserId(uid)
+    loadActivity(uid)
+  }
 
   function handleSelectDate(date: string) {
     if (selectedDate === date) {
@@ -155,11 +182,20 @@ export function Today() {
     }
     setSelectedDate(date)
     setDetailsLoading(true)
+    const params: Record<string, string | number> = { target_date: date }
+    if (viewingUserId) params.user_id = viewingUserId
     api
-      .get<CallDetail[]>('/api/dashboard/calls-on-date', { params: { target_date: date } })
+      .get<CallDetail[]>('/api/dashboard/calls-on-date', { params })
       .then((res) => setCallDetails(res.data))
       .finally(() => setDetailsLoading(false))
   }
+
+  const viewingUserName = viewingUserId
+    ? users.find((u) => u.id === viewingUserId)?.username
+    : null
+  const activityLabel = viewingUserName
+    ? `Calls made today by ${viewingUserName}`
+    : 'Calls made today'
 
   return (
     <div>
@@ -174,11 +210,30 @@ export function Today() {
         <p className="text-sm text-slate-500">Loading…</p>
       ) : (
         <>
+          {isAdmin && users.length > 0 && (
+            <div className="mb-4 flex items-center gap-3">
+              <label className="text-sm font-medium text-slate-600">View activity for:</label>
+              <select
+                value={viewingUserId ?? ''}
+                onChange={handleUserChange}
+                className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-sm text-slate-900 shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+              >
+                <option value="">My activity</option>
+                {users.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.username} ({u.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {activity && (
             <ActivityCard
               activity={activity}
               selectedDate={selectedDate}
               onSelectDate={handleSelectDate}
+              label={activityLabel}
             />
           )}
 
