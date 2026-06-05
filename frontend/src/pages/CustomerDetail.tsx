@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { api } from '../lib/api'
-import { formatDate, todayISO } from '../lib/format'
+import { formatDate, formatDateTime, todayISO } from '../lib/format'
 import type { Contact, CustomerWithReminders, Reminder } from '../lib/types'
 
 export function CustomerDetail() {
@@ -469,6 +469,9 @@ export function CustomerDetail() {
                     <div>
                       <p className="text-sm font-medium text-slate-900">
                         Called on {formatDate(r.reminder_date)}
+                        <span className="ml-2 text-xs font-normal text-slate-400">
+                          at {formatDateTime(r.created_at).split(', ')[1]}
+                        </span>
                       </p>
                       <p className="mt-0.5 text-xs text-slate-500">
                         Next promised:{' '}
@@ -513,6 +516,9 @@ export function CustomerDetail() {
                         <div>
                           <p className="text-sm font-medium text-slate-500 line-through">
                             Called on {formatDate(r.reminder_date)}
+                            <span className="ml-2 text-xs font-normal text-slate-400">
+                              at {formatDateTime(r.created_at).split(', ')[1]}
+                            </span>
                           </p>
                           <p className="mt-0.5 text-xs text-slate-400">
                             Next promised:{' '}
