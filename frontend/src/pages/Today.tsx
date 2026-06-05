@@ -286,8 +286,8 @@ export function Today() {
                       <td className="px-4 py-3 text-sm font-medium text-slate-900">
                         {c.name}
                         {c.monopoly_flag && (
-                          <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700" title="Ask for monopoly product order">
-                            Monopoly
+                          <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700" title="Ask for order">
+                            Order
                           </span>
                         )}
                       </td>
