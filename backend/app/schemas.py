@@ -119,6 +119,16 @@ class DashboardStats(BaseModel):
     no_followup: int
 
 
+class DailyCount(BaseModel):
+    date: date
+    count: int
+
+
+class MyActivity(BaseModel):
+    calls_today: int
+    daily_counts: list[DailyCount]
+
+
 # ---- Import ----
 class ImportRequest(BaseModel):
     text: str = Field(min_length=1)
