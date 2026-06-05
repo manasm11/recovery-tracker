@@ -1,10 +1,12 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useState, useRef, useCallback, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate } from '../lib/format'
 import { StatusBadge } from '../components/StatusBadge'
 import { useAuth } from '../auth/AuthContext'
 import type { CustomerStatus, CustomerStatusValue } from '../lib/types'
+
+const PAGE_SIZE = 50
 
 const STATUS_FILTERS: { value: CustomerStatusValue | ''; label: string }[] = [
   { value: '', label: 'All' },
@@ -15,10 +17,17 @@ const STATUS_FILTERS: { value: CustomerStatusValue | ''; label: string }[] = [
   { value: 'never_contacted', label: 'Never contacted' },
 ]
 
+interface PaginatedResponse {
+  items: CustomerStatus[]
+  total: number
+}
+
 export function Customers() {
   const { user: authUser } = useAuth()
   const [items, setItems] = useState<CustomerStatus[]>([])
+  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [name, setName] = useState('')
@@ -28,34 +37,66 @@ export function Customers() {
   const [deleting, setDeleting] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<CustomerStatusValue | ''>('')
   const [orderFilter, setOrderFilter] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  async function load(searchValue = '', status: CustomerStatusValue | '' = statusFilter) {
-    setLoading(true)
-    try {
-      const params: Record<string, string> = {}
-      if (searchValue) params.search = searchValue
-      if (status) params.status = status
-      const { data } = await api.get<CustomerStatus[]>('/api/customers', { params })
-      setItems(data)
-    } finally {
-      setLoading(false)
-    }
+  const hasMore = items.length < total
+
+  const fetchPage = useCallback(
+    async (offset: number, searchValue: string, status: CustomerStatusValue | '', orderFlag: boolean, append: boolean) => {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+      try {
+        const params: Record<string, string> = {
+          limit: String(PAGE_SIZE),
+          offset: String(offset),
+        }
+        if (searchValue) params.search = searchValue
+        if (status) params.status = status
+        if (orderFlag) params.order_flag = 'true'
+        const { data } = await api.get<PaginatedResponse>('/api/customers', { params })
+        if (append) {
+          setItems((prev) => [...prev, ...data.items])
+        } else {
+          setItems(data.items)
+        }
+        setTotal(data.total)
+      } finally {
+        if (append) {
+          setLoadingMore(false)
+        } else {
+          setLoading(false)
+        }
+      }
+    },
+    []
+  )
+
+  function resetAndLoad(searchValue: string, status: CustomerStatusValue | '', orderFlag: boolean) {
+    fetchPage(0, searchValue, status, orderFlag, false)
   }
 
   useEffect(() => {
-    let active = true
-    api
-      .get<CustomerStatus[]>('/api/customers')
-      .then((res) => {
-        if (active) setItems(res.data)
-      })
-      .finally(() => {
-        if (active) setLoading(false)
-      })
-    return () => {
-      active = false
-    }
-  }, [])
+    fetchPage(0, '', '', false, false)
+  }, [fetchPage])
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const sentinel = sentinelRef.current
+    if (!sentinel) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          fetchPage(items.length, search, statusFilter, orderFilter, true)
+        }
+      },
+      { threshold: 0.1 }
+    )
+    observer.observe(sentinel)
+    return () => observer.disconnect()
+  }, [hasMore, loading, loadingMore, items.length, search, statusFilter, orderFilter, fetchPage])
 
   async function handleAdd(e: FormEvent) {
     e.preventDefault()
@@ -70,7 +111,7 @@ export function Customers() {
       setName('')
       setPhone('')
       setShowForm(false)
-      await load(search)
+      resetAndLoad(search, statusFilter, orderFilter)
     } catch {
       setError('Could not add customer. Please try again.')
     } finally {
@@ -78,12 +119,13 @@ export function Customers() {
     }
   }
 
-  async function handleDelete(id: number, name: string) {
-    if (!confirm(`Delete "${name}"? You can restore them from the Deleted page.`)) return
+  async function handleDelete(id: number, customerName: string) {
+    if (!confirm(`Delete "${customerName}"? You can restore them from the Deleted page.`)) return
     setDeleting(id)
     try {
       await api.delete(`/api/customers/${id}`)
-      await load(search)
+      setItems((prev) => prev.filter((item) => item.id !== id))
+      setTotal((prev) => prev - 1)
     } finally {
       setDeleting(null)
     }
@@ -162,7 +204,7 @@ export function Customers() {
           value={search}
           onChange={(e) => {
             setSearch(e.target.value)
-            load(e.target.value)
+            resetAndLoad(e.target.value, statusFilter, orderFilter)
           }}
           placeholder="Search by name or phone…"
           className="w-full max-w-sm rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
@@ -173,7 +215,9 @@ export function Customers() {
               key={f.value}
               onClick={() => {
                 setStatusFilter(f.value)
-                load(search, f.value)
+                const newOrderFilter = false
+                setOrderFilter(newOrderFilter)
+                resetAndLoad(search, f.value, newOrderFilter)
               }}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                 statusFilter === f.value && !orderFilter
@@ -185,7 +229,11 @@ export function Customers() {
             </button>
           ))}
           <button
-            onClick={() => setOrderFilter((v) => !v)}
+            onClick={() => {
+              const newOrderFilter = !orderFilter
+              setOrderFilter(newOrderFilter)
+              resetAndLoad(search, statusFilter, newOrderFilter)
+            }}
             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
               orderFilter
                 ? 'bg-purple-700 text-white'
@@ -197,11 +245,9 @@ export function Customers() {
         </div>
       </div>
 
-      {(() => {
-        const displayItems = orderFilter ? items.filter((c) => c.monopoly_flag) : items
-        return loading ? (
+      {loading ? (
         <p className="text-sm text-slate-500">Loading…</p>
-      ) : displayItems.length === 0 ? (
+      ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-base font-medium text-slate-700">No customers yet</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -232,7 +278,7 @@ export function Customers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {displayItems.map((c) => (
+              {items.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">
                     <Link to={`/customers/${c.id}`} className="hover:underline">
@@ -293,9 +339,17 @@ export function Customers() {
               ))}
             </tbody>
           </table>
+          {loadingMore && (
+            <p className="py-3 text-center text-sm text-slate-500">Loading more…</p>
+          )}
+          <div ref={sentinelRef} className="h-1" />
+          {!hasMore && items.length > 0 && (
+            <p className="py-3 text-center text-xs text-slate-400">
+              Showing all {total} customers
+            </p>
+          )}
         </div>
-      )
-      })()}
+      )}
     </div>
   )
 }

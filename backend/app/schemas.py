@@ -99,6 +99,11 @@ class CustomerStatus(CustomerOut):
     status: str
 
 
+class PaginatedCustomers(BaseModel):
+    items: list["CustomerStatus"]
+    total: int
+
+
 class DeletedCustomerOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
