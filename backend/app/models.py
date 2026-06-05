@@ -33,6 +33,7 @@ class Customer(Base):
         DateTime(timezone=True), nullable=True, default=None, index=True
     )
     balance: Mapped[float | None] = mapped_column(Float, nullable=True, default=None)
+    monopoly_flag: Mapped[bool] = mapped_column(Integer, nullable=False, default=0, server_default="0")
 
     contacts: Mapped[list["Contact"]] = relationship(
         back_populates="customer",

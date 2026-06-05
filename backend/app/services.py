@@ -39,6 +39,7 @@ def compute_status(customer: Customer, today: date) -> CustomerStatus:
         created_at=customer.created_at,
         deleted_at=customer.deleted_at,
         balance=customer.balance,
+        monopoly_flag=bool(customer.monopoly_flag),
         last_reminder_date=last_reminder_date,
         next_date=next_date,
         last_notes=last_notes,

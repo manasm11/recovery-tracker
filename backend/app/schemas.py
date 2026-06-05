@@ -59,6 +59,7 @@ class CustomerOut(CustomerBase):
     created_at: datetime
     deleted_at: datetime | None = None
     balance: float | None = None
+    monopoly_flag: bool = False
 
 
 class ContactOut(BaseModel):

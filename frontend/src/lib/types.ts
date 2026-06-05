@@ -30,6 +30,7 @@ export interface Customer {
   created_at: string
   deleted_at: string | null
   balance: number | null
+  monopoly_flag: boolean
 }
 
 export interface CustomerStatus extends Customer {

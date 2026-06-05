@@ -223,6 +223,11 @@ export function Customers() {
                     <Link to={`/customers/${c.id}`} className="hover:underline">
                       {c.name}
                     </Link>
+                    {c.monopoly_flag && (
+                      <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700" title="Ask for monopoly product order">
+                        Monopoly
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-sm text-slate-600">{c.phone || '—'}</td>
                   <td className="px-4 py-3 text-sm text-slate-600">
