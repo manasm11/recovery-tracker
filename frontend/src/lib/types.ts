@@ -81,3 +81,10 @@ export interface MyActivity {
   calls_today: number
   daily_counts: DailyCount[]
 }
+
+export interface CallDetail {
+  customer_id: number
+  customer_name: string
+  notes: string
+  reminder_date: string
+}

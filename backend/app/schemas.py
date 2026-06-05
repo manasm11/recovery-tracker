@@ -129,6 +129,13 @@ class MyActivity(BaseModel):
     daily_counts: list[DailyCount]
 
 
+class CallDetail(BaseModel):
+    customer_id: int
+    customer_name: str
+    notes: str
+    reminder_date: date
+
+
 # ---- Import ----
 class ImportRequest(BaseModel):
     text: str = Field(min_length=1)

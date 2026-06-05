@@ -3,11 +3,19 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate } from '../lib/format'
 import { StatusBadge } from '../components/StatusBadge'
-import type { CustomerStatus, MyActivity } from '../lib/types'
+import type { CallDetail, CustomerStatus, MyActivity } from '../lib/types'
 
-function ActivityCard({ activity }: { activity: MyActivity }) {
+function ActivityCard({
+  activity,
+  selectedDate,
+  onSelectDate,
+}: {
+  activity: MyActivity
+  selectedDate: string | null
+  onSelectDate: (date: string) => void
+}) {
   const maxCount = Math.max(...activity.daily_counts.map((d) => d.count), 1)
-  const today = activity.daily_counts[activity.daily_counts.length - 1]
+  const todayEntry = activity.daily_counts[activity.daily_counts.length - 1]
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
   return (
@@ -27,27 +35,31 @@ function ActivityCard({ activity }: { activity: MyActivity }) {
 
       <div className="mt-5">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-          Last 30 days
+          Last 30 days — click a bar to see details
         </p>
         <div className="flex items-end gap-[3px]" style={{ height: 64 }}>
           {activity.daily_counts.map((d) => {
             const h = d.count > 0 ? Math.max((d.count / maxCount) * 56, 4) : 2
             const dayDate = new Date(d.date + 'T00:00:00')
             const dayName = weekDays[dayDate.getDay()]
-            const isToday = d.date === today?.date
+            const isToday = d.date === todayEntry?.date
+            const isSelected = d.date === selectedDate
             return (
               <div
                 key={d.date}
-                className="group relative flex-1"
+                className="group relative flex-1 cursor-pointer"
                 style={{ height: 64 }}
+                onClick={() => onSelectDate(d.date)}
               >
                 <div
-                  className={`absolute bottom-0 w-full rounded-sm ${
-                    isToday
-                      ? 'bg-emerald-500'
-                      : d.count > 0
-                        ? 'bg-slate-300'
-                        : 'bg-slate-100'
+                  className={`absolute bottom-0 w-full rounded-sm transition-colors ${
+                    isSelected
+                      ? 'bg-blue-500'
+                      : isToday
+                        ? 'bg-emerald-500'
+                        : d.count > 0
+                          ? 'bg-slate-300 hover:bg-slate-400'
+                          : 'bg-slate-100 hover:bg-slate-200'
                   }`}
                   style={{ height: h }}
                 />
@@ -63,10 +75,65 @@ function ActivityCard({ activity }: { activity: MyActivity }) {
   )
 }
 
+function CallDetailsList({
+  date,
+  calls,
+  loading,
+  onClose,
+}: {
+  date: string
+  calls: CallDetail[]
+  loading: boolean
+  onClose: () => void
+}) {
+  const formatted = formatDate(date)
+  return (
+    <div className="mb-6 rounded-xl border border-blue-200 bg-blue-50 p-5 shadow-sm">
+      <div className="mb-3 flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-slate-900">
+          Calls on {formatted} ({calls.length})
+        </h3>
+        <button
+          onClick={onClose}
+          className="text-xs font-medium text-slate-500 hover:text-slate-700"
+        >
+          Close
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-sm text-slate-500">Loading…</p>
+      ) : calls.length === 0 ? (
+        <p className="text-sm text-slate-500">No calls on this day.</p>
+      ) : (
+        <ul className="space-y-2">
+          {calls.map((c, i) => (
+            <li key={i} className="flex items-start gap-3 rounded-lg bg-white px-4 py-3 shadow-sm">
+              <div className="flex-1">
+                <Link
+                  to={`/customers/${c.customer_id}`}
+                  className="text-sm font-medium text-slate-900 hover:underline"
+                >
+                  {c.customer_name}
+                </Link>
+                {c.notes && (
+                  <p className="mt-0.5 text-xs text-slate-500">{c.notes}</p>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export function Today() {
   const [items, setItems] = useState<CustomerStatus[]>([])
   const [activity, setActivity] = useState<MyActivity | null>(null)
   const [loading, setLoading] = useState(true)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [callDetails, setCallDetails] = useState<CallDetail[]>([])
+  const [detailsLoading, setDetailsLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -79,6 +146,20 @@ export function Today() {
       })
       .finally(() => setLoading(false))
   }, [])
+
+  function handleSelectDate(date: string) {
+    if (selectedDate === date) {
+      setSelectedDate(null)
+      setCallDetails([])
+      return
+    }
+    setSelectedDate(date)
+    setDetailsLoading(true)
+    api
+      .get<CallDetail[]>('/api/dashboard/calls-on-date', { params: { target_date: date } })
+      .then((res) => setCallDetails(res.data))
+      .finally(() => setDetailsLoading(false))
+  }
 
   return (
     <div>
@@ -93,7 +174,22 @@ export function Today() {
         <p className="text-sm text-slate-500">Loading…</p>
       ) : (
         <>
-          {activity && <ActivityCard activity={activity} />}
+          {activity && (
+            <ActivityCard
+              activity={activity}
+              selectedDate={selectedDate}
+              onSelectDate={handleSelectDate}
+            />
+          )}
+
+          {selectedDate && (
+            <CallDetailsList
+              date={selectedDate}
+              calls={callDetails}
+              loading={detailsLoading}
+              onClose={() => { setSelectedDate(null); setCallDetails([]) }}
+            />
+          )}
 
           {items.length === 0 ? (
             <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
