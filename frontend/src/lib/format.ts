@@ -16,7 +16,7 @@ export function formatDateTime(value: string | null | undefined): string {
     const isoStr = value.endsWith('Z') || value.includes('+') ? value : value + 'Z'
     const utc = parseISO(isoStr)
     const ist = new Date(utc.getTime() + 5.5 * 60 * 60 * 1000)
-    return format(ist, 'dd MMM yyyy, hh:mm a')
+    return format(ist, "dd MMM yyyy, hh:mm a") + ' IST'
   } catch {
     return value
   }
