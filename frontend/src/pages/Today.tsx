@@ -295,7 +295,7 @@ export function Today() {
                       <td className="px-4 py-3 text-right">
                         <Link
                           to={`/customers/${c.id}`}
-                          className="rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
+                          className="whitespace-nowrap rounded-md bg-slate-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-800"
                         >
                           Log call
                         </Link>
