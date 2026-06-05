@@ -27,6 +27,7 @@ export function Customers() {
   const [error, setError] = useState<string | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [statusFilter, setStatusFilter] = useState<CustomerStatusValue | ''>('')
+  const [orderFilter, setOrderFilter] = useState(false)
 
   async function load(searchValue = '', status: CustomerStatusValue | '' = statusFilter) {
     setLoading(true)
@@ -175,7 +176,7 @@ export function Customers() {
                 load(search, f.value)
               }}
               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                statusFilter === f.value
+                statusFilter === f.value && !orderFilter
                   ? 'bg-slate-900 text-white'
                   : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
               }`}
@@ -183,12 +184,24 @@ export function Customers() {
               {f.label}
             </button>
           ))}
+          <button
+            onClick={() => setOrderFilter((v) => !v)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              orderFilter
+                ? 'bg-purple-700 text-white'
+                : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+            }`}
+          >
+            Order
+          </button>
         </div>
       </div>
 
-      {loading ? (
+      {(() => {
+        const displayItems = orderFilter ? items.filter((c) => c.monopoly_flag) : items
+        return loading ? (
         <p className="text-sm text-slate-500">Loading…</p>
-      ) : items.length === 0 ? (
+      ) : displayItems.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-white p-10 text-center">
           <p className="text-base font-medium text-slate-700">No customers yet</p>
           <p className="mt-1 text-sm text-slate-500">
@@ -219,7 +232,7 @@ export function Customers() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {items.map((c) => (
+              {displayItems.map((c) => (
                 <tr key={c.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 text-sm font-medium text-slate-900">
                     <Link to={`/customers/${c.id}`} className="hover:underline">
@@ -281,7 +294,8 @@ export function Customers() {
             </tbody>
           </table>
         </div>
-      )}
+      )
+      })()}
     </div>
   )
 }
