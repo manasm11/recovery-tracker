@@ -1,12 +1,13 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.deps import get_current_user
-from app.models import Customer, User
-from app.schemas import CustomerStatus, DashboardStats
+from app.models import Customer, Reminder, User
+from app.schemas import CustomerStatus, DailyCount, DashboardStats, MyActivity
 from app.services import compute_status
 
 router = APIRouter(prefix="/api/dashboard", tags=["dashboard"])
@@ -44,4 +45,40 @@ def stats(
         overdue=sum(1 for s in statuses if s.status == "overdue"),
         never_contacted=sum(1 for s in statuses if s.status == "never_contacted"),
         no_followup=sum(1 for s in statuses if s.status == "no_followup"),
+    )
+
+
+@router.get("/my-activity", response_model=MyActivity)
+def my_activity(
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> MyActivity:
+    """Return the current user's daily call counts for the last 30 days."""
+    today = date.today()
+    since = today - timedelta(days=29)
+
+    rows = (
+        db.query(
+            Reminder.reminder_date,
+            func.count(Reminder.id),
+        )
+        .filter(
+            Reminder.created_by == user.id,
+            Reminder.deleted_at.is_(None),
+            Reminder.reminder_date >= since,
+        )
+        .group_by(Reminder.reminder_date)
+        .order_by(Reminder.reminder_date.asc())
+        .all()
+    )
+
+    counts_map = {r[0]: r[1] for r in rows}
+    daily_counts = [
+        DailyCount(date=since + timedelta(days=i), count=counts_map.get(since + timedelta(days=i), 0))
+        for i in range(30)
+    ]
+
+    return MyActivity(
+        calls_today=counts_map.get(today, 0),
+        daily_counts=daily_counts,
     )

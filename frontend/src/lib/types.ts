@@ -71,3 +71,13 @@ export interface DashboardStats {
   never_contacted: number
   no_followup: number
 }
+
+export interface DailyCount {
+  date: string
+  count: number
+}
+
+export interface MyActivity {
+  calls_today: number
+  daily_counts: DailyCount[]
+}
