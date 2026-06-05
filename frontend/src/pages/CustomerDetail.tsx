@@ -207,8 +207,8 @@ export function CustomerDetail() {
           <h1 className="text-2xl font-semibold text-slate-900">
             {customer.name}
             {customer.monopoly_flag && (
-              <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-semibold text-purple-700" title="Ask for monopoly product order">
-                Monopoly
+              <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 text-sm font-semibold text-purple-700" title="Ask for order">
+                Order
               </span>
             )}
           </h1>
@@ -234,7 +234,7 @@ export function CustomerDetail() {
                   : 'border-slate-300 text-slate-700 hover:bg-slate-100'
               }`}
             >
-              {customer.monopoly_flag ? 'Remove Monopoly Flag' : 'Flag for Monopoly'}
+              {customer.monopoly_flag ? 'Remove Order Flag' : 'Flag for Order'}
             </button>
           )}
           <button

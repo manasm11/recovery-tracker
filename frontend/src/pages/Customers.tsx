@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../lib/api'
 import { formatDate } from '../lib/format'
 import { StatusBadge } from '../components/StatusBadge'
+import { useAuth } from '../auth/AuthContext'
 import type { CustomerStatus, CustomerStatusValue } from '../lib/types'
 
 const STATUS_FILTERS: { value: CustomerStatusValue | ''; label: string }[] = [
@@ -15,6 +16,7 @@ const STATUS_FILTERS: { value: CustomerStatusValue | ''; label: string }[] = [
 ]
 
 export function Customers() {
+  const { user: authUser } = useAuth()
   const [items, setItems] = useState<CustomerStatus[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -224,8 +226,8 @@ export function Customers() {
                       {c.name}
                     </Link>
                     {c.monopoly_flag && (
-                      <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700" title="Ask for monopoly product order">
-                        Monopoly
+                      <span className="ml-2 inline-flex items-center rounded-full bg-purple-100 px-2 py-0.5 text-xs font-semibold text-purple-700" title="Ask for order">
+                        Order
                       </span>
                     )}
                   </td>
@@ -239,6 +241,22 @@ export function Customers() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-3">
+                      {authUser?.role === 'admin' && (
+                        <button
+                          onClick={async () => {
+                            await api.patch(`/api/customers/${c.id}/monopoly-flag`)
+                            await load(search)
+                          }}
+                          className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
+                            c.monopoly_flag
+                              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                              : 'bg-slate-100 text-slate-500 hover:bg-slate-200'
+                          }`}
+                          title={c.monopoly_flag ? 'Remove order flag' : 'Flag for order'}
+                        >
+                          {c.monopoly_flag ? '✓ Order' : '+ Order'}
+                        </button>
+                      )}
                       <Link
                         to={`/customers/${c.id}`}
                         className="text-sm font-medium text-slate-900 hover:underline"
