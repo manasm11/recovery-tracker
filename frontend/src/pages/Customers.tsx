@@ -245,7 +245,11 @@ export function Customers() {
                         <button
                           onClick={async () => {
                             await api.patch(`/api/customers/${c.id}/monopoly-flag`)
-                            await load(search)
+                            setItems((prev) =>
+                              prev.map((item) =>
+                                item.id === c.id ? { ...item, monopoly_flag: !item.monopoly_flag } : item
+                              )
+                            )
                           }}
                           className={`rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${
                             c.monopoly_flag
