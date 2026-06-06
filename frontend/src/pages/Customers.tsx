@@ -245,6 +245,12 @@ export function Customers() {
         </div>
       </div>
 
+      {!loading && items.length > 0 && (
+        <p className="mb-3 text-sm text-slate-500">
+          Showing {items.length} of {total} customer{total !== 1 ? 's' : ''}
+        </p>
+      )}
+
       {loading ? (
         <p className="text-sm text-slate-500">Loading…</p>
       ) : items.length === 0 ? (
