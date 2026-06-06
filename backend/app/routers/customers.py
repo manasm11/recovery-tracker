@@ -16,6 +16,7 @@ from app.schemas import (
     ImportedCustomerInfo,
     ImportRequest,
     ImportResult,
+    PaginatedCustomers,
 )
 from app.services import compute_status
 
@@ -58,23 +59,40 @@ def list_deleted_customers(
     return result
 
 
-@router.get("", response_model=list[CustomerStatus])
+@router.get("", response_model=PaginatedCustomers)
 def list_customers(
     search: str | None = Query(default=None),
     status_filter: str | None = Query(default=None, alias="status"),
+    order_flag: bool | None = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
     db: Session = Depends(get_db),
     _: User = Depends(get_current_user),
-) -> list[CustomerStatus]:
+) -> PaginatedCustomers:
     query = _active_query(db)
     if search:
         like = f"%{search.strip()}%"
         query = query.filter((Customer.name.ilike(like)) | (Customer.phone.ilike(like)))
-    customers = query.order_by(Customer.name.asc()).all()
-    today = date.today()
-    results = [compute_status(c, today) for c in customers]
+    if order_flag is not None:
+        query = query.filter(Customer.monopoly_flag == (1 if order_flag else 0))
+    query = query.order_by(Customer.name.asc())
+
     if status_filter:
+        # Status requires computing for all matching customers then filtering
+        customers = query.all()
+        today = date.today()
+        results = [compute_status(c, today) for c in customers]
         results = [r for r in results if r.status == status_filter]
-    return results
+        total = len(results)
+        page = results[offset : offset + limit]
+    else:
+        # No status filter: paginate at DB level for speed
+        total = query.count()
+        customers = query.offset(offset).limit(limit).all()
+        today = date.today()
+        page = [compute_status(c, today) for c in customers]
+
+    return PaginatedCustomers(items=page, total=total)
 
 
 @router.post("", response_model=CustomerStatus, status_code=status.HTTP_201_CREATED)
