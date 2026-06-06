@@ -434,12 +434,9 @@ export function CustomerDetail() {
                 <label className="mb-1 block text-sm font-medium text-slate-700">
                   Reminder date
                 </label>
-                <input
-                  type="date"
-                  value={reminderDate}
-                  readOnly
-                  className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 cursor-not-allowed"
-                />
+                <p className="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+                  {formatDate(reminderDate)}
+                </p>
               </div>
               <div>
                 <label className="mb-1 block text-sm font-medium text-slate-700">
