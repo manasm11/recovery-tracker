@@ -1,4 +1,4 @@
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -58,7 +58,7 @@ def create_reminder(
     _get_active_customer(customer_id, db)
     reminder = Reminder(
         customer_id=customer_id,
-        reminder_date=payload.reminder_date,
+        reminder_date=date.today(),
         notes=payload.notes.strip(),
         next_date=payload.next_date,
         created_by=user.id,

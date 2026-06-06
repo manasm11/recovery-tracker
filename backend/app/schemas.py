@@ -24,8 +24,10 @@ class ReminderBase(BaseModel):
     next_date: date | None = None
 
 
-class ReminderCreate(ReminderBase):
-    pass
+class ReminderCreate(BaseModel):
+    reminder_date: date | None = None
+    notes: str = ""
+    next_date: date | None = None
 
 
 class ReminderOut(ReminderBase):

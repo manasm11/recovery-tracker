@@ -437,8 +437,8 @@ export function CustomerDetail() {
                 <input
                   type="date"
                   value={reminderDate}
-                  onChange={(e) => setReminderDate(e.target.value)}
-                  className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm outline-none focus:border-slate-900 focus:ring-1 focus:ring-slate-900"
+                  readOnly
+                  className="w-full rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500 cursor-not-allowed"
                 />
               </div>
               <div>
