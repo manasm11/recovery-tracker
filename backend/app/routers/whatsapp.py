@@ -1,10 +1,14 @@
+from datetime import date
+
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from pydantic import BaseModel
+from sqlalchemy.orm import Session
 
 from app import whatsapp
+from app.database import get_db
 from app.deps import get_current_user
-from app.models import User
+from app.models import Customer, Reminder, User
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
@@ -17,6 +21,7 @@ class StatusOut(BaseModel):
 class SendRequest(BaseModel):
     phone: str
     message: str
+    customer_id: int | None = None
 
 
 class SendResult(BaseModel):
@@ -96,10 +101,26 @@ def wa_restart(_: User = Depends(get_current_user)) -> SendResult:
 
 
 @router.post("/send", response_model=SendResult)
-def wa_send(req: SendRequest, _: User = Depends(get_current_user)) -> SendResult:
+def wa_send(
+    req: SendRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> SendResult:
     if not whatsapp.is_connected():
         raise HTTPException(503, "WhatsApp not connected — scan QR first")
     ok = whatsapp.send_message(req.phone, req.message)
     if ok:
+        # Log the reminder in customer history
+        if req.customer_id:
+            customer = db.get(Customer, req.customer_id)
+            if customer and customer.deleted_at is None:
+                reminder = Reminder(
+                    customer_id=req.customer_id,
+                    reminder_date=date.today(),
+                    notes=f"[WhatsApp] {req.message}",
+                    created_by=user.id,
+                )
+                db.add(reminder)
+                db.commit()
         return SendResult(success=True, detail="Message sent")
     return SendResult(success=False, detail="Failed to send message")

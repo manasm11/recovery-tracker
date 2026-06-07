@@ -37,6 +37,11 @@ export function CustomerDetail() {
   const [showDeletedReminders, setShowDeletedReminders] = useState(false)
   const [showDeletedContacts, setShowDeletedContacts] = useState(false)
 
+  // Balance editing state
+  const [editingBalance, setEditingBalance] = useState(false)
+  const [balanceInput, setBalanceInput] = useState('')
+  const [balanceSaving, setBalanceSaving] = useState(false)
+
   // WhatsApp reminder modal state
   const [waModalContact, setWaModalContact] = useState<Contact | null>(null)
   const [waMessage, setWaMessage] = useState('')
@@ -157,6 +162,26 @@ export function CustomerDetail() {
     await load()
   }
 
+  function startEditBalance() {
+    setBalanceInput(customer?.balance != null ? String(customer.balance) : '')
+    setEditingBalance(true)
+  }
+
+  async function handleSaveBalance() {
+    const val = parseFloat(balanceInput)
+    if (isNaN(val) || val < 0) return
+    setBalanceSaving(true)
+    try {
+      await api.patch(`/api/customers/${id}`, { balance: val })
+      setEditingBalance(false)
+      await load()
+    } catch {
+      // silently fail
+    } finally {
+      setBalanceSaving(false)
+    }
+  }
+
   function openWaModal(contact: Contact) {
     const balance = customer?.balance != null ? customer.balance.toFixed(2) : '0.00'
     setWaMessage(`Please confirm your outstanding balance is Rs. ${balance}`)
@@ -172,9 +197,11 @@ export function CustomerDetail() {
       const { data } = await api.post<{ success: boolean; detail: string }>('/api/whatsapp/send', {
         phone: waModalContact.phone,
         message: waMessage,
+        customer_id: Number(id),
       })
       setWaResult(data)
       if (data.success) {
+        await load()
         setTimeout(() => setWaModalContact(null), 1500)
       }
     } catch (err: unknown) {
@@ -215,11 +242,47 @@ export function CustomerDetail() {
           {customer.phone && (
             <p className="mt-1 text-sm text-slate-500">{customer.phone}</p>
           )}
-          {customer.balance != null && customer.balance > 0 && (
-            <p className="mt-1 text-sm font-medium text-amber-700">
-              Balance: &#8377; {customer.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-            </p>
-          )}
+          <div className="mt-1 flex items-center gap-2">
+            {editingBalance ? (
+              <>
+                <span className="text-sm font-medium text-amber-700">Balance: ₹</span>
+                <input
+                  type="number"
+                  value={balanceInput}
+                  onChange={(e) => setBalanceInput(e.target.value)}
+                  autoFocus
+                  className="w-32 rounded-md border border-slate-300 px-2 py-1 text-sm outline-none focus:border-slate-900"
+                  min="0"
+                  step="0.01"
+                />
+                <button
+                  onClick={handleSaveBalance}
+                  disabled={balanceSaving}
+                  className="text-xs font-medium text-green-700 hover:underline"
+                >
+                  {balanceSaving ? '…' : 'Save'}
+                </button>
+                <button
+                  onClick={() => setEditingBalance(false)}
+                  className="text-xs font-medium text-slate-400 hover:underline"
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <>
+                <p className="text-sm font-medium text-amber-700">
+                  Balance: ₹ {customer.balance != null ? customer.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 }) : '0.00'}
+                </p>
+                <button
+                  onClick={startEditBalance}
+                  className="text-xs font-medium text-slate-500 hover:underline"
+                >
+                  Edit
+                </button>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex gap-2">
           {authUser?.role === 'admin' && (

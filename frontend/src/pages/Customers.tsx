@@ -268,8 +268,8 @@ export function Customers() {
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Customer
                 </th>
-                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
-                  Phone
+                <th className="px-4 py-3 text-right text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Balance
                 </th>
                 <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
                   Last reminder
@@ -296,7 +296,11 @@ export function Customers() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3 text-sm text-slate-600">{c.phone || '—'}</td>
+                  <td className="px-4 py-3 text-right text-sm font-medium text-slate-700">
+                    {c.balance != null && c.balance > 0
+                      ? `₹ ${c.balance.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+                      : '—'}
+                  </td>
                   <td className="px-4 py-3 text-sm text-slate-600">
                     {formatDate(c.last_reminder_date)}
                   </td>
