@@ -1,4 +1,4 @@
-from datetime import UTC, date, datetime
+from datetime import UTC, date, datetime, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -56,9 +56,17 @@ def create_reminder(
     user: User = Depends(get_current_user),
 ) -> Reminder:
     _get_active_customer(customer_id, db)
+    today = date.today()
+    if not payload.notes or not payload.notes.strip():
+        raise HTTPException(status_code=422, detail="Notes field is required.")
+    if payload.next_date is not None:
+        if payload.next_date <= today:
+            raise HTTPException(status_code=422, detail="Next promised date must be after today.")
+        if payload.next_date > today + timedelta(days=60):
+            raise HTTPException(status_code=422, detail="Next promised date cannot be more than 60 days from today.")
     reminder = Reminder(
         customer_id=customer_id,
-        reminder_date=date.today(),
+        reminder_date=today,
         notes=payload.notes.strip(),
         next_date=payload.next_date,
         created_by=user.id,

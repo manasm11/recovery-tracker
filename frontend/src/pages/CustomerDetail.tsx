@@ -78,6 +78,23 @@ export function CustomerDetail() {
       setError('Reminder date is required.')
       return
     }
+    if (!notes.trim()) {
+      setError('Please enter what the customer said.')
+      return
+    }
+    if (nextDate) {
+      if (nextDate <= reminderDate) {
+        setError('Next promised date must be after the reminder date.')
+        return
+      }
+      const reminder = new Date(reminderDate)
+      const next = new Date(nextDate)
+      const diffDays = Math.round((next.getTime() - reminder.getTime()) / (1000 * 60 * 60 * 24))
+      if (diffDays > 60) {
+        setError('Next promised date cannot be more than 60 days from the reminder date.')
+        return
+      }
+    }
     setSaving(true)
     try {
       await api.post(`/api/customers/${id}/reminders`, {
