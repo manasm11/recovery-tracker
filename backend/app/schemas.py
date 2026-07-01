@@ -160,6 +160,10 @@ class ImportResult(BaseModel):
     duplicates: int
     credit_skipped: int
     total_parsed: int
+    restored: int = 0
+    soft_deleted: int = 0
     names_imported: list[ImportedCustomerInfo]
     names_skipped_credit: list[ImportedCustomerInfo]
+    names_restored: list[ImportedCustomerInfo] = []
+    names_soft_deleted: list[ImportedCustomerInfo] = []
     names_skipped_duplicate: list[ImportedCustomerInfo]
