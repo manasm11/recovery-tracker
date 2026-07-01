@@ -12,9 +12,13 @@ interface ImportResult {
   duplicates: number
   credit_skipped: number
   total_parsed: number
+  restored: number
+  soft_deleted: number
   names_imported: ImportedCustomerInfo[]
   names_skipped_credit: ImportedCustomerInfo[]
   names_skipped_duplicate: ImportedCustomerInfo[]
+  names_restored: ImportedCustomerInfo[]
+  names_soft_deleted: ImportedCustomerInfo[]
 }
 
 export function ImportCustomers() {
@@ -89,10 +93,12 @@ export function ImportCustomers() {
       {result && (
         <div className="space-y-5">
           {/* Summary cards */}
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
             <SummaryCard label="Total parsed" value={result.total_parsed} color="slate" />
             <SummaryCard label="Imported" value={result.imported} color="green" />
-            <SummaryCard label="Duplicates skipped" value={result.duplicates} color="amber" />
+            <SummaryCard label="Restored" value={result.restored} color="blue" />
+            <SummaryCard label="Removed" value={result.soft_deleted} color="orange" />
+            <SummaryCard label="Duplicates" value={result.duplicates} color="amber" />
             <SummaryCard label="Credit skipped" value={result.credit_skipped} color="red" />
           </div>
 
@@ -113,6 +119,26 @@ export function ImportCustomers() {
               title={`Duplicates skipped (${result.names_skipped_duplicate.length})`}
               items={result.names_skipped_duplicate}
               badgeColor="bg-amber-100 text-amber-700"
+              formatAmount={formatAmount}
+            />
+          )}
+
+          {/* Restored */}
+          {result.names_restored.length > 0 && (
+            <CollapsibleSection
+              title={`Restored (${result.names_restored.length})`}
+              items={result.names_restored}
+              badgeColor="bg-blue-100 text-blue-700"
+              formatAmount={formatAmount}
+            />
+          )}
+
+          {/* Soft-deleted */}
+          {result.names_soft_deleted.length > 0 && (
+            <CollapsibleSection
+              title={`Removed from list (${result.names_soft_deleted.length})`}
+              items={result.names_soft_deleted}
+              badgeColor="bg-orange-100 text-orange-700"
               formatAmount={formatAmount}
             />
           )}
@@ -157,13 +183,15 @@ function SummaryCard({
 }: {
   label: string
   value: number
-  color: 'slate' | 'green' | 'amber' | 'red'
+  color: 'slate' | 'green' | 'amber' | 'red' | 'blue' | 'orange'
 }) {
   const colorMap = {
     slate: 'bg-slate-50 text-slate-900',
     green: 'bg-green-50 text-green-700',
     amber: 'bg-amber-50 text-amber-700',
     red: 'bg-red-50 text-red-700',
+    blue: 'bg-blue-50 text-blue-700',
+    orange: 'bg-orange-50 text-orange-700',
   }
   return (
     <div className={`rounded-xl border border-slate-200 p-4 ${colorMap[color]}`}>

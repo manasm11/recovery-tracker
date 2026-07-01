@@ -202,17 +202,30 @@ def import_customers(
 
     imported: list[ImportedCustomerInfo] = []
     skipped_dup: list[ImportedCustomerInfo] = []
+    restored: list[ImportedCustomerInfo] = []
+    soft_deleted: list[ImportedCustomerInfo] = []
 
-    existing_customers: dict[str, Customer] = {
+    # Build lookup of ALL customers (active + soft-deleted) by normalized name
+    all_customers: dict[str, Customer] = {
         row.name.strip().upper(): row
-        for row in _active_query(db).all()
+        for row in db.query(Customer).all()
     }
+
+    # Track which normalized names appear in the import
+    imported_names: set[str] = set()
 
     for entry in summary.debit_entries:
         norm = entry.name.strip().upper()
-        if norm in existing_customers:
-            existing_customers[norm].balance = entry.amount
-            skipped_dup.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+        imported_names.add(norm)
+        if norm in all_customers:
+            existing = all_customers[norm]
+            existing.balance = entry.amount
+            if existing.deleted_at is not None:
+                # Restore soft-deleted customer
+                existing.deleted_at = None
+                restored.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+            else:
+                skipped_dup.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
             continue
         customer = Customer(
             name=entry.name.strip(),
@@ -221,8 +234,14 @@ def import_customers(
             balance=entry.amount,
         )
         db.add(customer)
-        existing_customers[norm] = customer
+        all_customers[norm] = customer
         imported.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+
+    # Soft-delete active customers not present in the import list
+    for norm, cust in all_customers.items():
+        if cust.deleted_at is None and norm not in imported_names:
+            cust.deleted_at = datetime.now(UTC)
+            soft_deleted.append(ImportedCustomerInfo(name=cust.name, amount=cust.balance or 0))
 
     db.commit()
 
@@ -231,10 +250,14 @@ def import_customers(
         duplicates=len(skipped_dup),
         credit_skipped=len(summary.credit_entries),
         total_parsed=summary.total_parsed,
+        restored=len(restored),
+        soft_deleted=len(soft_deleted),
         names_imported=imported,
         names_skipped_credit=[
             ImportedCustomerInfo(name=e.name, amount=e.amount)
             for e in summary.credit_entries
         ],
         names_skipped_duplicate=skipped_dup,
+        names_restored=restored,
+        names_soft_deleted=soft_deleted,
     )
