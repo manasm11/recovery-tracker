@@ -217,6 +217,13 @@ def import_customers(
     for entry in summary.debit_entries:
         norm = entry.name.strip().upper()
         imported_names.add(norm)
+        if entry.amount <= 0:
+            # Zero or negative debit balance → soft-delete if active
+            if norm in all_customers and all_customers[norm].deleted_at is None:
+                all_customers[norm].deleted_at = datetime.now(UTC)
+                all_customers[norm].balance = entry.amount
+                soft_deleted.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+            continue
         if norm in all_customers:
             existing = all_customers[norm]
             existing.balance = entry.amount
@@ -237,7 +244,16 @@ def import_customers(
         all_customers[norm] = customer
         imported.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
 
-    # Soft-delete active customers not present in the import list
+    # Soft-delete active customers that appear as credit entries
+    for entry in summary.credit_entries:
+        norm = entry.name.strip().upper()
+        imported_names.add(norm)
+        if norm in all_customers and all_customers[norm].deleted_at is None:
+            all_customers[norm].deleted_at = datetime.now(UTC)
+            all_customers[norm].balance = -entry.amount
+            soft_deleted.append(ImportedCustomerInfo(name=entry.name, amount=entry.amount))
+
+    # Soft-delete active customers not present in the import list at all
     for norm, cust in all_customers.items():
         if cust.deleted_at is None and norm not in imported_names:
             cust.deleted_at = datetime.now(UTC)
